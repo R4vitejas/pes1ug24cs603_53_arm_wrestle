@@ -2,7 +2,6 @@ import math
 import random
 import pygame
 
-
 class GameEngine:
 
     def __init__(self, width, height):
@@ -22,6 +21,8 @@ class GameEngine:
         
         self.font_big = pygame.font.SysFont(None, 44)
         self.font_med = pygame.font.SysFont(None, 26)
+        
+        self.boost_end_time = 0
 
     def handle_event(self, event):
         if self.game_state != "PLAYING":
@@ -33,14 +34,24 @@ class GameEngine:
             if self.stamina <= 10:
                 return
                 
+            current_ticks = pygame.time.get_ticks()
+            push_strength = 8.4 if current_ticks < self.boost_end_time else 4.2
+                
             if event.key == pygame.K_LEFT:
                 if self.last_key != pygame.K_LEFT: 
-                    self.arm_position -= 4.2
+                    self.arm_position -= push_strength
                     self.stamina = max(0.0, self.stamina - 2.0)
                     self.last_key = pygame.K_LEFT
             elif event.key == pygame.K_RIGHT:
-                if self.last_key != pygame.K_RIGHT: 
-                    self.arm_position -= 4.2
+                if self.last_key != pygame.K_RIGHT:
+                    # Check for perfect timing: exactly as AI surge ends (4500ms)
+                    cycle_time = current_ticks % 6000
+                    if 4500 <= cycle_time <= 4650:
+                        # Grant a 1.5 second momentum boost
+                        self.boost_end_time = current_ticks + 1500
+                        push_strength = 8.4  # Apply double strength immediately
+                        
+                    self.arm_position -= push_strength
                     self.stamina = max(0.0, self.stamina - 2.0)
                     self.last_key = pygame.K_RIGHT
 
@@ -48,8 +59,8 @@ class GameEngine:
         if self.game_state != "PLAYING":
             return
 
-        # 6-second dynamic AI cycle using milliseconds
-        cycle_time = pygame.time.get_ticks() % 6000
+        current_ticks = pygame.time.get_ticks()
+        cycle_time = current_ticks % 6000
         
         if cycle_time < 3500:
             phase_multiplier = 1.0  # Normal pushing phase
@@ -61,8 +72,10 @@ class GameEngine:
         ai_variance = random.uniform(0.3, 1.0)
         self.arm_position += (self.ai_strength * ai_variance) * phase_multiplier
 
+        # Apply temporary stamina recovery boost if active
+        recovery_rate = 3.0 if current_ticks < self.boost_end_time else 0.8
         if self.stamina < self.max_stamina:
-            self.stamina = min(self.max_stamina, self.stamina + 0.8)
+            self.stamina = min(self.max_stamina, self.stamina + recovery_rate)
 
         if self.arm_position <= -self.target_limit:
             self.winner = "PLAYER"
@@ -70,13 +83,14 @@ class GameEngine:
         elif self.arm_position >= self.target_limit:
             self.winner = "COMPUTER"
             self.game_state = "GAME_OVER"
-    
+
     def reset(self):
         self.arm_position = 0.0
         self.stamina = 100.0
         self.last_key = None
         self.winner = None
         self.game_state = "PLAYING"
+        self.boost_end_time = 0
 
     def render(self, screen):
         screen.fill((25, 28, 35))
@@ -95,10 +109,16 @@ class GameEngine:
                 exhaustion_warn = self.font_med.render("EXHAUSTED!", True, (240, 60, 60))
                 screen.blit(exhaustion_warn, (60, 80))
                 
-            cycle_time = pygame.time.get_ticks() % 6000
+            current_ticks = pygame.time.get_ticks()
+            cycle_time = current_ticks % 6000
+            
             if 3500 <= cycle_time < 4500:
                 surge_warn = self.font_med.render("SURGE!", True, (240, 60, 60))
                 screen.blit(surge_warn, (self.width - 150, 80))
+                
+            if current_ticks < self.boost_end_time:
+                boost_msg = self.font_med.render("PERFECT PARRY!", True, (100, 200, 255))
+                screen.blit(boost_msg, (60, 105))
 
         table_rect = pygame.Rect(40, 100, self.width - 80, 310)
         pygame.draw.rect(screen, (110, 50, 15), table_rect, border_radius=14)
@@ -132,7 +152,13 @@ class GameEngine:
         stamina_bg = pygame.Rect(140, 448, 240, 22)
         stamina_fill = pygame.Rect(140, 448, int(240 * (self.stamina / self.max_stamina)), 22)
         pygame.draw.rect(screen, (45, 50, 60), stamina_bg, border_radius=6)
-        bar_color = (60, 210, 100) if self.stamina > 25 else (220, 60, 60)
+        
+        # Turn stamina bar blue to visually reflect the boost state
+        if current_ticks < getattr(self, 'boost_end_time', 0):
+            bar_color = (100, 200, 255)
+        else:
+            bar_color = (60, 210, 100) if self.stamina > 25 else (220, 60, 60)
+            
         pygame.draw.rect(screen, bar_color, stamina_fill, border_radius=6)
 
         if self.game_state == "GAME_OVER":
