@@ -48,8 +48,18 @@ class GameEngine:
         if self.game_state != "PLAYING":
             return
 
+        # 6-second dynamic AI cycle using milliseconds
+        cycle_time = pygame.time.get_ticks() % 6000
+        
+        if cycle_time < 3500:
+            phase_multiplier = 1.0  # Normal pushing phase
+        elif cycle_time < 4500:
+            phase_multiplier = 2.2  # 1-second high-power surge
+        else:
+            phase_multiplier = 0.4  # 1.5-second cooldown/fatigue
+
         ai_variance = random.uniform(0.3, 1.0)
-        self.arm_position += self.ai_strength * ai_variance
+        self.arm_position += (self.ai_strength * ai_variance) * phase_multiplier
 
         if self.stamina < self.max_stamina:
             self.stamina = min(self.max_stamina, self.stamina + 0.8)
@@ -60,7 +70,7 @@ class GameEngine:
         elif self.arm_position >= self.target_limit:
             self.winner = "COMPUTER"
             self.game_state = "GAME_OVER"
-
+    
     def reset(self):
         self.arm_position = 0.0
         self.stamina = 100.0
