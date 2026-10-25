@@ -153,6 +153,8 @@ class GameEngine:
         stamina_fill = pygame.Rect(140, 448, int(240 * (self.stamina / self.max_stamina)), 22)
         pygame.draw.rect(screen, (45, 50, 60), stamina_bg, border_radius=6)
         
+        current_ticks = pygame.time.get_ticks()
+
         # Turn stamina bar blue to visually reflect the boost state
         if current_ticks < getattr(self, 'boost_end_time', 0):
             bar_color = (100, 200, 255)
