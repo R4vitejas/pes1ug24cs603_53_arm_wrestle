@@ -89,6 +89,17 @@ class GameEngine:
         screen.blit(player_header, (60, 55))
         screen.blit(computer_header, (self.width - 150, 55))
 
+        # --- Visual Cues ---
+        if self.game_state == "PLAYING":
+            if self.stamina <= 10:
+                exhaustion_warn = self.font_med.render("EXHAUSTED!", True, (240, 60, 60))
+                screen.blit(exhaustion_warn, (60, 80))
+                
+            cycle_time = pygame.time.get_ticks() % 6000
+            if 3500 <= cycle_time < 4500:
+                surge_warn = self.font_med.render("SURGE!", True, (240, 60, 60))
+                screen.blit(surge_warn, (self.width - 150, 80))
+
         table_rect = pygame.Rect(40, 100, self.width - 80, 310)
         pygame.draw.rect(screen, (110, 50, 15), table_rect, border_radius=14)
         pygame.draw.rect(screen, (70, 30, 8), table_rect, width=5, border_radius=14)
